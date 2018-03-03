@@ -9,6 +9,12 @@
 #include "MPC.h"
 #include "json.hpp"
 
+#define NO_WAY_POINTS 6
+#define WAY_POINTS_POLYNOMIAL_ORDER 5
+#define WAY_POINTS_METERS 50
+#define WAY_POINTS_INTERVAL 5
+
+
 // for convenience
 using json = nlohmann::json;
 
@@ -99,7 +105,8 @@ int main() {
           *
           */
           double steer_value;
-          double throttle_value;
+          //double throttle_value;
+          double throttle_value = 0.3;
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
@@ -107,7 +114,7 @@ int main() {
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = throttle_value;
 
-          //Display the MPC predicted trajectory 
+          //Display the MPC predicted trajectory
           vector<double> mpc_x_vals;
           vector<double> mpc_y_vals;
 
@@ -117,13 +124,29 @@ int main() {
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
 
-          //Display the waypoints/reference line
+
+          vector<double> waypoints_x;
+          vector<double> waypoints_y;
+          for (int i = 0; i < ptsx.size(); i++) {
+            double dx = ptsx[i] - px;
+            double dy = ptsy[i] - py;
+            waypoints_x.push_back(dx * cos(-psi) - dy * sin(-psi));
+            waypoints_y.push_back(dx * sin(-psi) + dy * cos(-psi));
+          }
+
+          Eigen::Map<Eigen::VectorXd> waypoints_x_eig(&waypoints_x[0], NO_WAY_POINTS);
+          Eigen::Map<Eigen::VectorXd> waypoints_y_eig(&waypoints_y[0], NO_WAY_POINTS);
+          auto coeffs = polyfit(waypoints_x_eig, waypoints_y_eig, WAY_POINTS_POLYNOMIAL_ORDER);
+
+          // Display the waypoints/reference line
           vector<double> next_x_vals;
           vector<double> next_y_vals;
-
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
-
+          for (double i = 0; i <= WAY_POINTS_METERS; i += WAY_POINTS_INTERVAL){
+            next_x_vals.push_back(i);
+            next_y_vals.push_back(polyeval(coeffs, i));
+          }
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
 
