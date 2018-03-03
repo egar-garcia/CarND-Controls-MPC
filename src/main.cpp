@@ -128,8 +128,9 @@ int main() {
 
           Eigen::VectorXd state(6);
           state << 0, 0, 0, v, cte, epsi;
+
           auto vars = mpc.Solve(state, coeffs);
-          steer_value = vars[0];
+          steer_value = vars[0] / deg2rad(25);
           throttle_value = vars[1];
           cout << "steer_value: " << steer_value << ", throttle_value: " << throttle_value << endl;
 
@@ -147,7 +148,7 @@ int main() {
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
           for (size_t i = 2; i < vars.size(); i ++) {
-            if (i%2 == 0) {
+            if (i % 2 == 0) {
               mpc_x_vals.push_back(vars[i]);
             }
             else {
