@@ -66,18 +66,18 @@ class FG_eval {
 
     // Minimizing the use of actuators.
     for (size_t t = 0; t < N - 1; t++) {
-      //fg[0] += CppAD::pow(vars[delta_start + t], 2);
-      //fg[0] += CppAD::pow(vars[a_start + t], 2);
-      fg[0] += 50*CppAD::pow(vars[delta_start + t], 2);
-      fg[0] += 50*CppAD::pow(vars[a_start + t], 2);
+      fg[0] += CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += CppAD::pow(vars[a_start + t], 2);
+      //fg[0] += 50*CppAD::pow(vars[delta_start + t], 2);
+      //fg[0] += 50*CppAD::pow(vars[a_start + t], 2);
     }
 
     // Minimizing the value gap between sequential actuations.
     for (size_t t = 0; t < N - 2; t++) {
-      //fg[0] += CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-      //fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
-      fg[0] += 250000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-      fg[0] += 5000*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+      fg[0] += CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+      //fg[0] += 250000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      //fg[0] += 5000*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
     // Initialization & constraints
@@ -134,6 +134,33 @@ class FG_eval {
       fg[1 + cte_start + t] = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
       fg[1 + epsi_start + t] = epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
     }
+
+    std::cout << "*fg: [";
+    for (int i = 0; i < fg.size(); i++) {
+      if (i - 1 == x_start) std::cout << " *x_start* ";
+      if (i - 1 == y_start) std::cout << " *y_start* ";
+      if (i - 1  == psi_start) std::cout << " *psi_start* ";
+      if (i - 1 == v_start) std::cout << " *v_start* ";
+      if (i - 1 == cte_start) std::cout << " *cte_start* ";
+      if (i - 1 == epsi_start) std::cout << " *epsi_start* ";
+      if (i - 1 == delta_start) std::cout << " *delta_start* ";
+      if (i - 1 == a_start) std::cout << " *a_start* ";
+      std::cout << fg[i] << ", ";
+    }
+    std::cout << "]" << endl;
+    std::cout << "*vars: [";
+    for (int i = 0; i < vars.size(); i++) {
+      if (i == x_start) std::cout << " *x_start* ";
+      if (i == y_start) std::cout << " *y_start* ";
+      if (i == psi_start) std::cout << " *psi_start* ";
+      if (i == v_start) std::cout << " *v_start* ";
+      if (i == cte_start) std::cout << " *cte_start* ";
+      if (i == epsi_start) std::cout << " *epsi_start* ";
+      if (i == delta_start) std::cout << " *delta_start* ";
+      if (i == a_start) std::cout << " *a_start* ";
+      std::cout << vars[i] << ", ";
+    }
+    std::cout << "]" << endl;
   }
 };
 
@@ -148,6 +175,13 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   size_t i;
   typedef CPPAD_TESTVECTOR(double) Dvector;
 
+  double x = state[0];
+  double y = state[1];
+  double psi = state[2];
+  double v = state[3];
+  double cte = state[4];
+  double epsi = state[5];
+
   // Setting the number of model variables (includes both states and inputs).
   size_t n_vars = 6 * N + 2 * (N - 1);
   // Setting the number of constraints
@@ -160,14 +194,12 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
     vars[i] = 0;
   }
   // Setting the initial variable values
-  /*
-  vars[x_start] = state[0];
-  vars[y_start] = state[1];
-  vars[psi_start] = state[2];
-  vars[v_start] = state[3];
-  vars[cte_start] = state[4];
-  vars[epsi_start] = state[5];
-  */
+  vars[x_start] = x;
+  vars[y_start] = y;
+  vars[psi_start] = psi;
+  vars[v_start] = v;
+  vars[cte_start] = cte;
+  vars[epsi_start] = epsi;
 
 
   Dvector vars_lowerbound(n_vars);
@@ -183,8 +215,8 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 
   // The upper and lower limits of delta are set to -25 and 25 degrees (values in radians).
   for (size_t i = delta_start; i < a_start; i++) {
-    vars_lowerbound[i] = -0.436332312998582;
-    vars_upperbound[i] = 0.436332312998582;
+    vars_lowerbound[i] = -0.436332312998582 * Lf;
+    vars_upperbound[i] = 0.436332312998582 * Lf;
   }
 
   // Acceleration/decceleration upper and lower limits.
@@ -202,19 +234,19 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
     constraints_upperbound[i] = 0;
   }
 
-  constraints_lowerbound[x_start] = state[0];
-  constraints_lowerbound[y_start] = state[1];
-  constraints_lowerbound[psi_start] = state[2];
-  constraints_lowerbound[v_start] = state[3];
-  constraints_lowerbound[cte_start] = state[4];
-  constraints_lowerbound[epsi_start] = state[5];
+  constraints_lowerbound[x_start] = x;
+  constraints_lowerbound[y_start] = y;
+  constraints_lowerbound[psi_start] = psi;
+  constraints_lowerbound[v_start] = v;
+  constraints_lowerbound[cte_start] = cte;
+  constraints_lowerbound[epsi_start] = epsi;
 
-  constraints_upperbound[x_start] = state[0];
-  constraints_upperbound[y_start] = state[1];
-  constraints_upperbound[psi_start] = state[2];
-  constraints_upperbound[v_start] = state[3];
-  constraints_upperbound[cte_start] = state[4];
-  constraints_upperbound[epsi_start] = state[5];
+  constraints_upperbound[x_start] = x;
+  constraints_upperbound[y_start] = y;
+  constraints_upperbound[psi_start] = psi;
+  constraints_upperbound[v_start] = v;
+  constraints_upperbound[cte_start] = cte;
+  constraints_upperbound[epsi_start] = epsi;
 
 
   // object that computes objective and constraints
@@ -250,9 +282,36 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   ok &= solution.status == CppAD::ipopt::solve_result<Dvector>::success;
 
   // Cost
-  auto cost = solution.obj_value;
-  std::cout << "solution.status " << solution.status << std::endl;
-  std::cout << "Cost " << cost << std::endl;
+  //auto cost = solution.obj_value;
+  //std::cout << "*** Cost " << cost << std::endl;
+
+  std::cout << "vars: [";
+  for (int i = 0; i < vars.size(); i++) {
+    if (i == x_start) std::cout << " *x_start* ";
+    if (i == y_start) std::cout << " *y_start* ";
+    if (i == psi_start) std::cout << " *psi_start* ";
+    if (i == v_start) std::cout << " *v_start* ";
+    if (i == cte_start) std::cout << " *cte_start* ";
+    if (i == epsi_start) std::cout << " *epsi_start* ";
+    if (i == delta_start) std::cout << " *delta_start* ";
+    if (i == a_start) std::cout << " *a_start* ";
+    std::cout << vars[i] << ", ";
+  }
+  std::cout << "]" << endl;
+  //std::cout << "*** solution.status " << solution.status << std::endl;
+  std::cout << "solution.x: [";
+  for (int i = 0; i < solution.x.size(); i++) {
+    if (i == x_start) std::cout << " *x_start* ";
+    if (i == y_start) std::cout << " *y_start* ";
+    if (i == psi_start) std::cout << " *psi_start* ";
+    if (i == v_start) std::cout << " *v_start* ";
+    if (i == cte_start) std::cout << " *cte_start* ";
+    if (i == epsi_start) std::cout << " *epsi_start* ";
+    if (i == delta_start) std::cout << " *delta_start* ";
+    if (i == a_start) std::cout << " *a_start* ";
+    std::cout << solution.x[i] << ", ";
+  }
+  std::cout << "]" << endl;
 
   // Returning the first actuator values. The variables can be accessed with `solution.x[i]`.
   vector<double> result;
