@@ -9,11 +9,10 @@
 #include "MPC.h"
 #include "json.hpp"
 
-#define NO_WAY_POINTS 6
 #define WAY_POINTS_POLYNOMIAL_ORDER 5
 #define WAY_POINTS_METERS 50
 #define WAY_POINTS_INTERVAL 5
-#define DELAY 0.1
+#define DELAY 0.001
 
 
 // for convenience
@@ -98,23 +97,36 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
-          //double delta= j[1]["steering_angle"];
-          //double a = j[1]["throttle"];
+          double delta= j[1]["steering_angle"];
+          double a = j[1]["throttle"];
+          cout << ">=====================================" << endl;
+          cout << "**** px: " << px << ", py: " << py << ", psi: " << psi << ", v: " << v
+               << ", delta: " << delta << ", a: " << a << endl;
 
           vector<double> waypoints_x;
           vector<double> waypoints_y;
           for (size_t i = 0; i < ptsx.size(); i++) {
             double dx = ptsx[i] - px;
             double dy = ptsy[i] - py;
-            waypoints_x.push_back(dx * cos(-psi) - dy * sin(-psi));
-            waypoints_y.push_back(dx * sin(-psi) + dy * cos(-psi));
+            double minus_psi = -psi;
+            double cos_minus_psi = cos(minus_psi);
+            double sin_minus_psi = sin(minus_psi);
+            waypoints_x.push_back(dx * cos_minus_psi - dy * sin_minus_psi);
+            waypoints_y.push_back(dx * sin_minus_psi + dy * cos_minus_psi);
+            cout << i << " - ptsx[i]: " << ptsx[i] << ", px: " << px << ", dx: " << dx << endl;
+            cout << i << " - ptsy[i]: " << ptsy[i] << ", py: " << py << ", dy: " << dy << endl;
+            cout << i << " - -psi: " << minus_psi << ", cos: " << cos_minus_psi << ", sin: " << sin_minus_psi << endl;
+            cout << i << " - <<" << (dx * cos_minus_psi - dy * sin_minus_psi) << ", "
+                 << (dx * sin_minus_psi + dy * cos_minus_psi) << ">>" << endl;
           }
 
-          Eigen::Map<Eigen::VectorXd> waypoints_x_eig(&waypoints_x[0], NO_WAY_POINTS);
-          Eigen::Map<Eigen::VectorXd> waypoints_y_eig(&waypoints_y[0], NO_WAY_POINTS);
+          Eigen::Map<Eigen::VectorXd> waypoints_x_eig(&waypoints_x[0], waypoints_x.size());
+          Eigen::Map<Eigen::VectorXd> waypoints_y_eig(&waypoints_y[0], waypoints_y.size());
           auto coeffs = polyfit(waypoints_x_eig, waypoints_y_eig, WAY_POINTS_POLYNOMIAL_ORDER);
           double cte = coeffs[0];  // px = 0, py = 0
           double epsi = -atan(coeffs[1]);  // p
+          cout << "**** cte: " << cte << ", epsi: " << epsi <<
+                  ", cf0:" << coeffs[0] << ", cf1:" << coeffs[1] << ", cf2:" << coeffs[2] << ", cf3:" << coeffs[3] << endl;
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -136,29 +148,35 @@ int main() {
           double psi = 0;
           double cte = coeffs[0];
           double epsi = -atan(coeffs[1]);
+          */
 
+          /*
           // Future state after delay.
-          double x_delay = x + (v * cos(psi) * DELAY);
-          double y_delay = y + (v * sin(psi) * DELAY);
-          double psi_delay = psi - (v * delta * DELAY / mpc.Lf);
-          double v_delay = v + a * DELAY;
-          double cte_delay = cte + (v * sin(epsi) * DELAY);
-          double epsi_delay = epsi - (v * atan(coeffs[1]) * DELAY / mpc.Lf);
+          double x1 = (v * cos(psi) * DELAY);
+          double y1 = (v * sin(psi) * DELAY);
+          double psi1 = psi + (v * delta * DELAY / 2.67);
+          double v1 = v + a * DELAY;
+          double cte1 = cte + (v * sin(epsi) * DELAY);
+          double epsi1 = epsi + (v * atan(coeffs[1]) * DELAY / 2.67);
           */
 
           Eigen::VectorXd state(6);
           state << 0, 0, 0, v, cte, epsi;
+          //state << x1, y1, psi1, v1, cte1, epsi1;
+          //cout << "**** x1: " << x1 << ", y1: " << y1 << ", psi1: " << psi1 << ", v1: " << v1
+          //     << ", cte1: " << cte1 << ", epsi1: " << epsi1 << endl;
 
           auto vars = mpc.Solve(state, coeffs);
           steer_value = vars[0];
           throttle_value = vars[1];
           //throttle_value = 0.3;
-          cout << "===> steer_value: " << steer_value << ", throttle_value: " << throttle_value << endl;
+          cout << "*** steer_value: " << steer_value << ", throttle_value: " << throttle_value << endl;
+          //cout << "*** NOW: " << system_clock::now() << endl;
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          msgJson["steering_angle"] = steer_value / (deg2rad(25));
+          msgJson["steering_angle"] = -steer_value / (deg2rad(25));
           msgJson["throttle"] = throttle_value;
           //msgJson["steering_angle"] = steer_value;
           //msgJson["throttle"] = throttle_value;
@@ -176,14 +194,12 @@ int main() {
               mpc_y_vals.push_back(vars[i]);
             }
           }
-
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
 
           // Display the waypoints/reference line
           vector<double> next_x_vals;
           vector<double> next_y_vals;
-
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
           for (double i = 0; i <= WAY_POINTS_METERS; i += WAY_POINTS_INTERVAL){
@@ -207,6 +223,7 @@ int main() {
           // SUBMITTING.
           this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          cout << "<=====================================" << endl;
         }
       } else {
         // Manual driving
