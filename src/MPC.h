@@ -7,8 +7,12 @@
 using namespace std;
 
 class MPC {
+ private:
+  int latency_index;
+
  public:
-  MPC();
+  ///* Constructs an MPC with latency delay in seconds
+  MPC(const double& latency);
 
   virtual ~MPC();
 
