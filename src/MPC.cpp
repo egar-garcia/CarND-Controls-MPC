@@ -249,7 +249,8 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   auto cost = solution.obj_value;
   std::cout << "*** Cost " << cost << std::endl;
 
-  // Returning the first actuator values. The variables can be accessed with `solution.x[i]`.
+  // The variables can be accessed with `solution.x[i]`.
+  // Returning actuator values given by the latency index. 
   vector<double> result;
   result.push_back(solution.x[delta_start + latency_index]);
   result.push_back(solution.x[a_start + latency_index]);

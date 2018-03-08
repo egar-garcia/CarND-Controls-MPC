@@ -113,7 +113,7 @@ int main() {
           }
 
           /*
-          * Fitting the trajectory's polynomial using the way points
+          * Fitting the trajectory's polynomial using the waypoints
           */
           Eigen::Map<Eigen::VectorXd> waypoints_x_eig(&waypoints_x[0], waypoints_x.size());
           Eigen::Map<Eigen::VectorXd> waypoints_y_eig(&waypoints_y[0], waypoints_y.size());
