@@ -74,7 +74,7 @@ int main() {
   uWS::Hub h;
 
   // MPC is initialized here!
-  MPC mpc(LATENCY_IN_MILLISECONDS / 1000.0);
+  MPC mpc;
 
   h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -96,6 +96,8 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+          double delta= j[1]["steering_angle"];
+          double a = j[1]["throttle"];
 
           /*
           * Calculating the way points based on the vehicles's orientation
@@ -128,8 +130,16 @@ int main() {
           /*
           * Calculating steering angle and throttle using MPC.
           */
+          // State after delay.
+          long delay = LATENCY_IN_MILLISECONDS / 1000.0;
           Eigen::VectorXd state(6);
-          state << 0, 0, 0, v, cte, epsi;
+          state <<
+            v * delay,
+            0,
+            -v * delta * delay / 2.67,
+            v + a * delay,
+            cte + v * sin(epsi) * delay,
+            epsi - v * atan(coeffs[1]) * delay / 2.67;
           auto vars = mpc.Solve(state, coeffs);
           double steer_value = vars[0];
           double throttle_value = vars[1];

@@ -133,12 +133,7 @@ class FG_eval {
 //
 // MPC class definition implementation.
 //
-MPC::MPC(const double& latency) {
-    // Calculating the index to be used in solution given by the IPOPT solver
-    // according to the given latency
-    this -> latency_index = (int)std::round(latency / dt);
-}
-
+MPC::MPC() {}
 MPC::~MPC() {}
 
 vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
@@ -250,10 +245,10 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   std::cout << "*** Cost " << cost << std::endl;
 
   // The variables can be accessed with `solution.x[i]`.
-  // Returning actuator values given by the latency index. 
+  // Returning actuator values given by the latency index.
   vector<double> result;
-  result.push_back(solution.x[delta_start + latency_index]);
-  result.push_back(solution.x[a_start + latency_index]);
+  result.push_back(solution.x[delta_start]);
+  result.push_back(solution.x[a_start]);
   for (size_t i = 1; i < N; i++) {
     result.push_back(solution.x[x_start + i]);
     result.push_back(solution.x[y_start + i]);
