@@ -131,15 +131,18 @@ int main() {
           * Calculating steering angle and throttle using MPC.
           */
           // State after delay.
-          long delay = LATENCY_IN_MILLISECONDS / 1000.0;
+          double delay = LATENCY_IN_MILLISECONDS / 1000.0;
           Eigen::VectorXd state(6);
+          double psi_delay = -delta;
+          double x_delay = v * cos(psi) * delay;
+          double y_delay = v * sin(psi) * delay;
           state <<
-            v * delay,
-            0,
-            -v * delta * delay / 2.67,
+            x_delay,
+            y_delay,
+            v / Lf * psi_delay * delay,
             v + a * delay,
             cte + v * sin(epsi) * delay,
-            epsi - v * atan(coeffs[1]) * delay / 2.67;
+            delta - atan(coeffs[1]) + v * psi_delay / Lf * delay;
           auto vars = mpc.Solve(state, coeffs);
           double steer_value = vars[0];
           double throttle_value = vars[1];

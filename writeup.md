@@ -116,6 +116,7 @@ Though the IPOPT solver, MPC approximates a continuous reference trajectory by m
 
 As part of the arguments for the constructor of the MPC, I added the latency to be used, which is translated to the index to look for in the IPOPT solver's solution, this can be seen in the lines 136 to 140 of [MPC.cpp](./src/MPC.cpp). Then this index is used to get the actuators' values for the specified latency (lines 255 and 256 of [MPC.cpp](./src/MPC.cpp)).
 
+Update: In the second version the state was calculated with the prediction for the latency time (lines 133 to 145 of [main.cpp](./src/main.cpp)), then this is passed to the IPOPT solver, with this change the latency management doesn't depend on ```dt```.
 
 ### Simulation
 
@@ -125,3 +126,5 @@ As part of the arguments for the constructor of the MPC, I added the latency to 
 After the previously described implementation of the Model Predictive Control, the execution in my computer using the Term 2 Simulator was able to successfully drive the car within the track surface. This can be seen in the following video of two laps.
 
 [![Two Laps Run](http://img.youtube.com/vi/d_5yOt9_-JY/0.jpg)](http://www.youtube.com/watch?v=d_5yOt9_-JY)
+
+[![Two Laps Run with latency management update](http://img.youtube.com/vi/Sx0QxBEwaBw/0.jpg)](http://www.youtube.com/watch?v=Sx0QxBEwaBw)
